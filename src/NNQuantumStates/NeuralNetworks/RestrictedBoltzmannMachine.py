@@ -1,12 +1,13 @@
 import tensorflow as tf
 import numpy as np
 import os
+from NNQuantumStates.NeuralNetworks import NeuralNetwork
 
 import zconfig
 import utils
 
 # from https://gist.github.com/blackecho/db85fab069bd2d6fb3e7
-class RestrictedBoltzmannMachine(object):
+class RestrictedBoltzmannMachine(NeuralNetwork):
 
     """ Restricted Boltzmann Machine implementation using TensorFlow.
     The interface of the class is sklearn-like.
