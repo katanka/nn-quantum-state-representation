@@ -1,5 +1,4 @@
 from nn_quantum_states.networks.rbm import RBM
-from nn_quantum_states.training import Trainer
 from nn_quantum_states.data.generator import Generator
 from nn_quantum_states.data.states import W
 
