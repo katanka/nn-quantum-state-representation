@@ -4,7 +4,7 @@ class Generator(object):
     def __init__(self, state):
         self.state = state
 
-    def generate(self, num_samples):
+    def sample(self, num_samples):
         samples = []
         for _ in range(num_samples):
             samples.append(self.state.sample())
