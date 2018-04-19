@@ -1,12 +1,12 @@
 import tensorflow as tf
 import numpy as np
 
-from NNQuantumStates.NeuralNetworks import NeuralNetwork
+from nn_quantum_states.networks.neuralnetwork import NeuralNetwork
 
 def sigmoid(x):
     return np.pow((1 + np.exp(-x)), -1)
 
-class RBM(NeuralNetwork):
+class RBM(object):
     def __init__(self, num_vis, num_hid):
 
         self.num_vis = num_vis
@@ -26,6 +26,7 @@ class RBM(NeuralNetwork):
         return np.exp(np.dot(self.vis_bias, state)) * np.prod(2*np.cosh(self.eff_angles))
 
     def initialize_weights(self):
+        pass
 
     def E_Local(self, state):
         E_loc = 0
