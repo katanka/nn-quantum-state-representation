@@ -7,10 +7,10 @@ alpha = 1
 
 num_training_samples = 50
 
-rbm = RBM(num_spins, alpha*num_spins)
+rbm = RBM(num_spins, alpha * num_spins)
 true_state = W(num_spins)
 generator = Generator(true_state)
 training_samples = generator.sample(num_training_samples)
 
-
-Trainer(rbm, training_samples).train()
+spins, hidden = rbm.find_state()
+rbm.set_effective_angles(spins)
