@@ -1,6 +1,6 @@
 import numpy as np
 from nn_quantum_states.hamiltonians.hamiltonian import Hamiltonian
-import rbm
+
 
 class Ising1D(Hamiltonian):
     def __init__(self, display_name, N, bc_periodic=True, h = 1):
@@ -17,10 +17,10 @@ class Ising1D(Hamiltonian):
             else:
                 El -= spins[i]*spins[i+1]
         #Tranverse Field Term sigma_x s_i = -s_i
-        state_i = rbm.Psi_M(self, spins)
+        state_i = rbm.Psi_M(spins)
         for i in range(N):
             spins[i] = -spins[i]   #apply spin flip
-            El -= self.h * spins[i] * (rbm.Psi_M(self, spins)/state_i)
+            El -= self.h * spins[i] * (rbm.Psi_M(spins)/state_i)
             spins[i] = -spins[i]
         return El/N
 

@@ -20,7 +20,7 @@ class RBM(NeuralNetwork):
         self.W = self.random_complex((self.num_vis, self.num_hid))
         self.param_flat = np.vstack((self.vis_bias, self.hid_bias, np.ravel(self.W).reshape((self.num_hid*self.num_vis, 1))))
 
-        self.effective_angles = np.zeros((self.num_hid, 1))
+        self.effective_angles = np.complex128(np.zeros((self.num_hid, 1)))
 
         self.hamiltonian = hami
 
@@ -36,10 +36,10 @@ class RBM(NeuralNetwork):
         self.effective_angles = self.hid_bias + self.W.T @ spins
 
     def update_eff_angles(self, spins):
-        self.effective_angles -= 2*self.W.T @ spins
+        self.effective_angles -= np.array([2*self.W.T @ spins]).T
 
     def Psi_M(self, spins):
-        return np.exp(self.vis_bias @ spins) * np.prod(2 * np.cosh(self.effective_angles))
+        return np.exp(self.vis_bias @ np.array([spins])) * np.prod(2 * np.cosh(self.effective_angles))
 
     def E_Local(self, spins, hamiltonian):
         return hamiltonian.get_local_energy(self, spins)
@@ -52,7 +52,7 @@ class RBM(NeuralNetwork):
         Psi_M_initial = self.Psi_M(spins)
         Psi_M_flipped = self.Psi_M(spins_flipped)
 
-        return np.absolute(
+        return np.linalg.norm(
             Psi_M_flipped * np.conj(Psi_M_flipped) / (Psi_M_initial * np.conj(Psi_M_initial))) >= np.random.normal()
 
     def step(self, spins, num_spins=1):
@@ -73,7 +73,7 @@ class RBM(NeuralNetwork):
         rejected = 0
         N_var = self.num_var
         #thermalization
-        for k in range(iterations*therm_factor):
+        for k in range(int(iterations*therm_factor)):
             spins, count = self.step(spins)
             rejected += count
         E_locs = []
@@ -89,7 +89,7 @@ class RBM(NeuralNetwork):
                 var_a = spins.reshape((len(spins), 1))
                 var_b = np.tanh(self.effective_angles)
                 var_W = var_a @ var_b.T
-                var_flat = np.vstack(var_a, var_b, np.ravel(var_W).reshape((self.num_hid * self.num_vis, 1)))
+                var_flat = np.vstack((var_a, var_b, np.ravel(var_W).reshape((self.num_hid * self.num_vis, 1))))
                 E_loc = self.E_Local(spins, self.hamiltonian)
                 prob = np.absolute(self.Psi_M(spins)*self.Psi_M(spins).conj())
                 E_locs.append(E_loc)
