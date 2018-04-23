@@ -8,7 +8,7 @@ class Ising1D(Hamiltonian):
         self.h = h    #transverse field strength
 
     def get_local_energy(self, rbm, spins):
-        El = 0
+        El = np.array([0.0]).reshape((1, 1))
         N = len(spins)
         #Nearest Neighbor Term s_i * s_(i+1)
         for i in range(N):
@@ -20,7 +20,7 @@ class Ising1D(Hamiltonian):
         state_i = rbm.Psi_M(spins)
         for i in range(N):
             spins[i] = -spins[i]   #apply spin flip
-            El -= self.h * spins[i] * (rbm.Psi_M(spins)/state_i)
+            El -= np.real(self.h * spins[i] * (rbm.Psi_M(spins)/state_i))
             spins[i] = -spins[i]
         return El/N
 

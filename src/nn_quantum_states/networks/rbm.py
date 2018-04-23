@@ -1,5 +1,4 @@
 import numpy as np
-
 from nn_quantum_states.networks.neuralnetwork import NeuralNetwork
 
 
@@ -33,13 +32,13 @@ class RBM(NeuralNetwork):
         return a + b * 1j
 
     def set_effective_angles(self, spins):
-        self.effective_angles = self.hid_bias + self.W.T @ spins
+        self.effective_angles = np.complex128(self.hid_bias + self.W.T @ spins)
 
     def update_eff_angles(self, spins):
-        self.effective_angles -= np.array([2*self.W.T @ spins]).T
+        self.effective_angles -= np.array(2*self.W.T @ spins)
 
     def Psi_M(self, spins):
-        return np.exp(self.vis_bias @ np.array([spins])) * np.prod(2 * np.cosh(self.effective_angles))
+        return np.complex128(np.exp(np.dot(self.vis_bias.T, spins)) * np.prod(2 * np.cosh(self.effective_angles)))
 
     def E_Local(self, spins, hamiltonian):
         return hamiltonian.get_local_energy(self, spins)
@@ -66,9 +65,9 @@ class RBM(NeuralNetwork):
         else:
             return spins, 1
 
-    def SR_step(self, iterations, therm_factor):
+    def SR_step(self, iterations, therm_factor, reg):
         lr = .1 #learning rate
-        spins = np.random.randint(2, size=self.num_vis)
+        spins = np.random.randint(2, size=self.vis_bias.shape)
         spins[spins == 0] = -1
         rejected = 0
         N_var = self.num_var
@@ -77,11 +76,11 @@ class RBM(NeuralNetwork):
             spins, count = self.step(spins)
             rejected += count
         E_locs = []
-        exp_var = np.zeros((N_var, 1))
-        exp_conj_var = np.zeros((N_var, 1))
+        exp_var = np.zeros((N_var, 1), dtype=np.complex)
+        exp_conj_var = np.zeros((N_var, 1), dtype=np.complex)
         probs = []
-        F = []
-        exp_cross = np.zeros((N_var, N_var))
+        exp_cross = np.zeros((N_var, N_var), dtype=np.complex128)
+        F = np.zeros((N_var, 1), dtype=np.complex128)
         for k in range(iterations):
             spins, count = self.step(spins)
             rejected += count
@@ -98,18 +97,18 @@ class RBM(NeuralNetwork):
                 exp_conj_var += prob*np.conj(var_flat)
                 exp_cross += prob * (np.conj(var_flat) @ var_flat.T)
                 F += prob*E_loc*np.conj(var_flat)
-        sum_probs = np.sum(probs)
+        sum_probs = np.real(np.sum(probs))
         exp_var = exp_var/sum_probs
         exp_conj_var = exp_conj_var/sum_probs
         exp_cross = exp_cross/sum_probs
         S = exp_cross - np.conj(exp_var) @ exp_var.T
-        exp_E_loc = np.sum(E_locs)/sum_probs
+        exp_E_loc = np.real(np.sum(E_locs)/sum_probs)
         F = F/sum_probs - exp_E_loc*exp_conj_var
-        steps = np.scipy.sparse.linalg.spsolve(S, -lr*F)
-        self.vis_bias += steps[:len(self.num_vis)]
+        steps = np.linalg.solve(S + reg*np.eye(N_var), -lr*F)
+        self.vis_bias += steps[:self.num_vis].reshape((self.num_vis, 1))
         self.hid_bias += steps[self.num_vis:(self.num_vis + self.num_hid)]
         self.W += steps[(self.num_vis + self.num_hid):].reshape((self.num_vis, self.num_hid))
-        print('Local Energy: ' + exp_E_loc)
+        print('Local Energy: ', exp_E_loc)
         return exp_E_loc
 
 
