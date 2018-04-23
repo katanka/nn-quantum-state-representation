@@ -11,5 +11,5 @@ class Hamiltonian(object):
     def min_flips(self):
         raise NotImplementedError()
 
-    def get_local_energy(self, spins):
+    def get_local_energy(self, rbm, spins):
         raise NotImplementedError()
