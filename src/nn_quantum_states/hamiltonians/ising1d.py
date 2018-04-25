@@ -17,11 +17,11 @@ class Ising1D(Hamiltonian):
             else:
                 El -= spins[i]*spins[i+1]
         #Tranverse Field Term sigma_x s_i = -s_i
-        state_i = rbm.Psi_M(spins)
-        for i in range(N):
-            spins[i] = -spins[i]   #apply spin flip
-            El -= np.real(self.h * spins[i] * (rbm.Psi_M(spins)/state_i))
-            spins[i] = -spins[i]
+        # state_i = rbm.Psi_M(spins)
+        # for i in range(N):
+        #     spins[i] = -spins[i]   #apply spin flip
+        #     El -= np.real(self.h * spins[i] * (rbm.Psi_M(spins)/state_i))
+        #     spins[i] = -spins[i]
         return El/N
 
 
