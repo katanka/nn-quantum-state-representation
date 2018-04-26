@@ -77,7 +77,7 @@ class Generator(object):
                 flipped_spins[i][0] = spins[i][0]*-1
         return flipped_spins
 
-    def generate_samples(self, iterations, therm_factor=0.05, sweep_factor=1):
+    def generate_samples(self, iterations, therm_factor=0.1, sweep_factor=1):
 
         self.model.init_effective_angles(self.curr_state)
 

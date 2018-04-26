@@ -67,6 +67,7 @@ class RBM(NeuralNetwork):
         return log
 
     def optimize(self, num_epochs, num_samples):
+        energies = []
         for iter_num in range(num_epochs):
             print("iteration: ", iter_num+1)
             sampler = Generator(self.hamiltonian, self)
@@ -75,6 +76,8 @@ class RBM(NeuralNetwork):
             param_step, E_locs = self.get_SR_gradient(sampler, iter_num, num_samples)
             self.update_params(self.lr*param_step)
             print(np.mean(np.real(E_locs))/self.num_vis)
+            energies.append(np.mean(np.real(E_locs))/self.num_vis)
+        return energies
 
     def get_SR_gradient(self, sampler, iter_num, num_samples):
         spin_set = np.array(sampler.spin_set).reshape((num_samples, self.num_vis))
