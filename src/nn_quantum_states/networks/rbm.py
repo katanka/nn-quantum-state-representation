@@ -1,5 +1,6 @@
 import numpy as np
 from nn_quantum_states.networks.neuralnetwork import NeuralNetwork
+from nn_quantum_states.data.generator import Generator
 
 
 def sigmoid(x):
@@ -7,7 +8,7 @@ def sigmoid(x):
 
 
 class RBM(NeuralNetwork):
-    def __init__(self, num_vis, num_hid, hami):
+    def __init__(self, num_vis, num_hid, hami, lr = .5):
         super().__init__("Restricted Boltzmann Machine")
 
         # number of visible units (spins in the system)
@@ -28,14 +29,14 @@ class RBM(NeuralNetwork):
         # weight matrix
         self.W = self.init_weights((self.num_vis, self.num_hid))
 
-        # flattened vector of variational parameters for optimization
-        self.param_flat = np.vstack((self.vis_bias, self.hid_bias, np.ravel(self.W).reshape((self.num_hid*self.num_vis, 1))))
-
         # look-up tables for efficient computation of wave function amplitudes
         self.effective_angles = np.complex128(np.zeros((self.num_hid, 1)))
 
         # hamiltonian governing evolution of system
         self.hamiltonian = hami
+
+        # learning rate
+        self.lr = lr
 
     def init_weights(self, size):
         a = (np.random.random(size) - .5) * 10e-3
@@ -46,102 +47,73 @@ class RBM(NeuralNetwork):
         self.effective_angles = self.hid_bias + self.W.T @ spins
 
     # update look-up tables when new spin configuration accepted by Metropolis Algorithm
-    def update_eff_angles(self, spins):
-        self.effective_angles -= 2*self.W.T @ spins.reshape((self.num_vis, 1))
+    def update_eff_angles(self, spins, spins_prime):
+        spins_diff = spins - spins_prime
+        self.effective_angles -= self.W.T @ (spins_diff).reshape((self.num_vis, 1))
 
     # returns wave function amplitude of SPINS configuration
     def Psi_M(self, spins):
-        return np.complex128(np.exp(-np.dot(self.vis_bias.T, spins)) * np.prod(2 * np.cosh(self.effective_angles)))
+        return np.complex128(np.exp(np.dot(self.vis_bias.T, spins)) * np.prod(2 * np.cosh(self.effective_angles)))
 
-    # call local energy from hamiltonian object
-    def E_Local(self, spins, hamiltonian):
-        return hamiltonian.get_local_energy(self, spins)
+    def amp_ratio(self, spins, spins_prime):
+        return np.exp(self.log_amp_ratio(spins, spins_prime))
 
-    # flip NUM_SPINS spins in the input configuration SPINS and accept the new
-    # configuration if the flip is accepted.
-    def step(self, spins, num_spins=1):
-        flip_idx = np.random.choice(list(range(self.num_vis)), num_spins)
+    def log_amp_ratio(self, spins, spins_prime):
+        spins_diff = spins - spins_prime
+        piece1 = -1*np.dot(self.vis_bias.T, spins_diff)
+        piece2 = np.sum(np.log(np.cosh(self.effective_angles - self.W.T @ spins_diff))
+                         - np.log(np.cosh(self.effective_angles)))
+        log = piece1 + piece2
+        return log
 
-        if self.flip_accepted(spins, flip_idx):
-            for i in flip_idx:
-                spins[i] *= -1
-            self.update_eff_angles(spins)
-            return spins, 0
-        else:
-            return spins, 1
+    def optimize(self, num_epochs, num_samples):
+        for iter_num in range(num_epochs):
+            print("iteration: ", iter_num+1)
+            sampler = Generator(self.hamiltonian, self)
+            sampler.generate_samples(num_samples)
 
-    # returns True if the flipped state is accepted and False otherwise
-    def flip_accepted(self, spins, flip_idx):
-        spins_flipped = np.ones(spins.shape)
-        for i in flip_idx:
-            spins_flipped[i] *= -1
+            param_step, E_locs = self.get_SR_gradient(sampler, iter_num, num_samples)
+            self.update_params(self.lr*param_step)
+            print(np.mean(np.real(E_locs))/self.num_vis)
 
-        Psi_M_initial = self.Psi_M(spins)
-        Psi_M_flipped = self.Psi_M(spins_flipped)
-        transition_prob = np.square(np.absolute(Psi_M_flipped / (Psi_M_initial)))
-        return transition_prob >= np.random.random()
+    def get_SR_gradient(self, sampler, iter_num, num_samples):
+        spin_set = np.array(sampler.spin_set).reshape((num_samples, self.num_vis))
+        E_locs = np.array(sampler.local_energies).reshape((len(spin_set), 1))
+        param_step, grads = self.compute_grads(iter_num, spin_set, E_locs, num_samples)
+        return param_step, E_locs
 
-    def init_random_state(self):
-        spins = np.random.randint(2, size=self.vis_bias.shape)
-        spins[spins == 0] = -1
-        return spins
+    def compute_grads(self, iter_num, spin_set, E_locs, num_samples):
+        eff_angles = self.W.T @ spin_set.T + self.hid_bias
+        var_a = np.reshape(spin_set.T, (self.num_vis, num_samples))
+        var_b = np.tanh(eff_angles)
+        var_b = np.reshape(var_b, (self.num_hid, num_samples))
+        var_W = (spin_set.T).reshape((self.num_vis, 1, num_samples)) * np.tanh(eff_angles.reshape((1, self.num_hid, num_samples)))
 
-    def SR_step(self, iterations, therm_factor, reg):
-        lr = .001 # learning rate
-        N_var = self.num_var
+        grads = np.concatenate([var_a, var_b, var_W.reshape(self.num_vis*self.num_hid, num_samples)])
 
-        #thermalization
-        spins = self.init_random_state()
-        for k in range(int(iterations*therm_factor)):
-            #spins, hidden = self.gibbs_sample(spins, hidden)
-            spins, _ = self.step(spins)
+        exp_grads = np.real(np.sum(grads, axis=1, keepdims=True)) / num_samples
 
-        E_locs = []
-        exp_var = np.zeros((N_var, 1), dtype=np.complex)
-        exp_conj_var = np.zeros((N_var, 1), dtype=np.complex128)
-        probs = []
-        S = np.zeros((N_var, N_var), dtype=np.complex128)
-        F = np.zeros((N_var, 1), dtype=np.complex128)
-        
-        for k in range(iterations):
-            #spins, hidden = self.gibbs_sample(spins, hidden)
-            spins, _ = self.step(spins)
-            if k % 100 == 0:
+        # Cross-correlation matrix S
+        exp_grads_matrix = np.conj(exp_grads.reshape((grads.shape[0], 1))) * exp_grads.reshape((1, grads.shape[0]))
+        #cross_term = np.einsum('ik,jk->ij', np.conjugate(grads), grads)/num_samples
+        cross_term = (np.conjugate(grads) @ grads.T)/num_samples
+        S = cross_term - exp_grads_matrix
 
-                var_a = spins.reshape((len(spins), 1))
-                var_b = np.tanh(self.effective_angles)
-                var_W = var_a @ var_b.T
-                var_flat = np.vstack((var_a, var_b, np.ravel(var_W).reshape((self.num_hid * self.num_vis, 1))))
+        F = np.sum(E_locs.T * grads.conj(), axis=1)/num_samples
+        F -= np.sum(E_locs.T, axis=1) * np.sum(grads.conj(), axis=1) /np.square(num_samples)
+        lamb = 100*(.9**iter_num)
+        if lamb < 10e-4:
+            lamb = 10e-4
+        S_ridge = S + lamb*np.eye(S.shape[0])
+        param_step = (np.linalg.solve(S_ridge, -1*self.lr*F)).reshape(grads.shape[0], 1)
 
-                E_loc = self.E_Local(spins, self.hamiltonian)
-                E_locs.append(E_loc)
+        return param_step, grads
 
-                prob = np.absolute(self.Psi_M(spins)*self.Psi_M(spins).conj())
-                probs.append(prob)
 
-                exp_var += prob*var_flat
-                exp_conj_var += prob*np.conj(var_flat)
-
-                S += prob * (np.conj(var_flat) @ var_flat.T)
-                F += prob*E_loc*np.conj(var_flat)
-
-        sum_probs = np.sum(probs)
-        exp_var = exp_var/sum_probs
-        exp_conj_var = exp_conj_var/sum_probs
-        S = S/sum_probs
-        S -= np.conj(exp_var) @ exp_var.T
-        exp_E_loc = np.sum(E_locs)/sum_probs
-        F = F/sum_probs - exp_E_loc*exp_conj_var
-        if reg <= .001:
-            reg = .001
-        steps = np.linalg.solve(S + reg*np.eye(N_var), -lr*F)
-        #steps = np.matmul(np.linalg.inv(S + reg*np.eye(N_var)), -lr*F)
-        self.vis_bias += steps[:self.num_vis].reshape((self.num_vis, 1))
-        self.hid_bias += steps[self.num_vis:(self.num_vis + self.num_hid)]
-        self.W += steps[(self.num_vis + self.num_hid):].reshape((self.num_vis, self.num_hid))
-        print('Local Energy: ', exp_E_loc)
-        return exp_E_loc
-
+    def update_params(self, steps):
+        self.vis_bias += steps[:self.num_vis].copy()
+        self.hid_bias += steps[self.num_vis:(self.num_vis+self.num_hid)].copy()
+        self.W += steps[(self.num_vis+self.num_hid):].reshape((self.num_vis, self.num_hid)).copy()
 
 
     def gibbs_sample(self, spins, hidden):

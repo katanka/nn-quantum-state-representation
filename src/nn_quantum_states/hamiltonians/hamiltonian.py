@@ -1,15 +1,12 @@
 import numpy as np
 
 class Hamiltonian(object):
-    def __init__(self, display_name, N, bc_periodic=True):
+    def __init__(self, display_name, num_spins, bc_periodic=True):
+
         self.display_name = display_name
-        self.N = N
 
-    def find_connection(self, spins):
-        raise NotImplementedError()
+        self.num_spins = num_spins
 
-    def min_flips(self):
-        raise NotImplementedError()
 
-    def get_local_energy(self, rbm, spins):
+    def get_matrix_elems(self, rbm, spins):
         raise NotImplementedError()
