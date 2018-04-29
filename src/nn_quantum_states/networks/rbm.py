@@ -39,8 +39,8 @@ class RBM(NeuralNetwork):
         self.lr = lr
 
     def init_weights(self, size):
-        a = (np.random.random(size) - .5) * 10e-3
-        b = (np.random.random(size) - .5) * 10e-3
+        a = (np.random.random(size) - .5) * 10e-2
+        b = (np.random.random(size) - .5) * 10e-2
         return np.complex128(a + b * 1j)
 
     def init_effective_angles(self, spins):
@@ -104,11 +104,12 @@ class RBM(NeuralNetwork):
 
         F = np.sum(E_locs.T * grads.conj(), axis=1)/num_samples
         F -= np.sum(E_locs.T, axis=1) * np.sum(grads.conj(), axis=1) /np.square(num_samples)
-        lamb = 100*(.9**iter_num)
+        lamb = 100*(.85**iter_num)
         if lamb < 10e-4:
             lamb = 10e-4
         S_ridge = S + lamb*np.eye(S.shape[0])
-        param_step = (np.linalg.solve(S_ridge, -1*self.lr*F)).reshape(grads.shape[0], 1)
+        lr = self.lr*(1/np.sqrt(iter_num + 1))
+        param_step = (np.linalg.solve(S_ridge, -1*lr*F)).reshape(grads.shape[0], 1)
 
         return param_step, grads
 

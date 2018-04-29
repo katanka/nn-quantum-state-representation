@@ -14,11 +14,11 @@ alpha = 2
 iterations = 7500
 epochs = 75
 hami = Ising1D('Ising Model', num_spins, h=2)
-model = RBM(num_spins, alpha * num_spins, hami)
+model = RBM(num_spins, alpha * num_spins, hami, lr=1)
 Energies = model.optimize(epochs, iterations)
 
 plt.figure()
-plt.plot(range(50), Energies)
+plt.plot(range(epochs), Energies)
 plt.xlabel('Iteration')
 plt.ylabel('$E_{loc}$')
 plt.title('Energy vs. Iteration')
