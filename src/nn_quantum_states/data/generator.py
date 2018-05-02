@@ -48,6 +48,10 @@ class Generator(object):
             energy_terms.append(self.model.amp_ratio(self.curr_state, flipped_state) * elems[i])
         return sum(energy_terms)
 
+    def compute_corr(self, site1, site2):
+        corrs = [spins[0][site1]*spins[0][site2] for spins in self.spin_set]
+        return np.mean(corrs)
+
     # flip NUM_SPINS spins in the input configuration SPINS and accept the new
     # configuration if the flip is accepted.
     def step(self, num_spins=1):
@@ -77,7 +81,7 @@ class Generator(object):
                 flipped_spins[i][0] = spins[i][0]*-1
         return flipped_spins
 
-    def generate_samples(self, iterations, therm_factor=0.01, sweep_factor=1):
+    def generate_samples(self, iterations, therm_factor=0.01, sweep_factor=1.0):
 
         self.model.init_effective_angles(self.curr_state)
 
