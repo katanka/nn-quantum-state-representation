@@ -3,7 +3,7 @@ import numpy as np
 class Generator(object):
     """
     Performs Markov Chain Monte Carlo Sampling to generate a set of
-    spin configurations sampled from the wave function we are trying
+    spin configurations sampled from the wave-function we are trying
     to model.
     """
 
@@ -48,10 +48,6 @@ class Generator(object):
             energy_terms.append(self.model.amp_ratio(self.curr_state, flipped_state) * elems[i])
         return sum(energy_terms)
 
-    def compute_corr(self, site1, site2):
-        corrs = [spins[0][site1]*spins[0][site2] for spins in self.spin_set]
-        return np.mean(corrs)
-
     # flip NUM_SPINS spins in the input configuration SPINS and accept the new
     # configuration if the flip is accepted.
     def step(self, num_spins=1):
@@ -81,8 +77,7 @@ class Generator(object):
                 flipped_spins[i][0] = spins[i][0]*-1
         return flipped_spins
 
-    def generate_samples(self, iterations, therm_factor=0.01, sweep_factor=1.0):
-
+    def generate_samples(self, iterations, therm_factor=0.01, sweep_factor=1):
         self.model.init_effective_angles(self.curr_state)
 
         # thermalization
@@ -97,3 +92,6 @@ class Generator(object):
             self.spin_set.append(np.array(self.curr_state).reshape((1, self.model.num_vis)))
             self.local_energies.append(self.get_local_energy())
 
+    def compute_corr(self, site1, site2):
+        corrs = [spins[0][site1]*spins[0][site2] for spins in self.spin_set]
+        return np.mean(corrs)

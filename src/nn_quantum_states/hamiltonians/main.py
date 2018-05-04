@@ -1,2 +1,0 @@
-from nn_quantum_states.networks.neuralnetwork import NeuralNetwork
-from hamiltonian import Hamiltonian

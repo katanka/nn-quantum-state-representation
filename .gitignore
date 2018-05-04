@@ -1,3 +1,7 @@
 .idea/
 __pycache__/
 *.pyc
+.DS_Store
+img/
+img_old/
+.ipynb_checkpoints

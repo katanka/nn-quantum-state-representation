@@ -1,12 +1,10 @@
-import numpy as np
 from nn_quantum_states.hamiltonians.hamiltonian import Hamiltonian
 
 
 class Heisen1D(Hamiltonian):
 
-
-    def __init__(self, display_name, num_spins, bc_periodic=True, J = 1):
-        super().__init__(display_name, num_spins, bc_periodic=True)
+    def __init__(self, num_spins, bc_periodic=True, J=1):
+        super().__init__(num_spins, bc_periodic=True)
 
         # transverse field strength parameter
         self.J = J
@@ -23,9 +21,9 @@ class Heisen1D(Hamiltonian):
         mat_elems = [0]
         # Nearest Neighbor Term s_i * s_(i+1)
         for i in range(self.num_spins - 1):
-             mat_elems[0] += spins[i]*spins[i+1]
+            mat_elems[0] += spins[i] * spins[i + 1]
         if self.bc_p:
-            mat_elems[0] += spins[0]*spins[self.num_spins - 1]
+            mat_elems[0] += spins[0] * spins[self.num_spins - 1]
 
         for i in range(self.num_spins - 1):
             if spins[i] != spins[i + 1]:
@@ -34,8 +32,6 @@ class Heisen1D(Hamiltonian):
         if self.bc_p:
             if spins[0] != spins[self.num_spins - 1]:
                 mat_elems.append(-2)
-                non_zero_states.append([i+1, 0])
+                non_zero_states.append([i + 1, 0])
         mat_elems *= self.J
         return mat_elems, non_zero_states
-
-
