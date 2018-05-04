@@ -49,6 +49,6 @@ class Ising1D(Hamiltonian):
 
                 H[H_i, H_j] = H_sum
 
-        energy = np.min(np.linalg.eigvals(H)) / self.num_spins
+        energy = np.min(np.real(np.linalg.eigvals(H))) / self.num_spins
 
         return energy

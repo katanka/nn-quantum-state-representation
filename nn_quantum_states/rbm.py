@@ -1,5 +1,5 @@
 import numpy as np
-from nn_quantum_states.data.generator import Generator
+from nn_quantum_states.sampler import Sampler
 
 
 def sigmoid(x):
@@ -33,6 +33,8 @@ class RBM(object):
 
         # learning rate
         self.lr = lr
+
+        self.sampler = None
 
     # Initialize matrix of complex numbers within a range set below.
     def init_weights(self, size):
@@ -72,17 +74,17 @@ class RBM(object):
 
     # run NUM_EPOCHS iterations of the SR algorithm, using MCMC sampling with NUM_SAMPLES iterations,
     # returns the energy per spin after each parameter update.
-    def optimize(self, num_epochs, num_samples, therm_factor, sweep_factor):
+    def optimize(self, num_epochs, num_samples, therm_factor, sweep_factor, verbose=False):
         energies = []
         for iter_num in range(num_epochs):
             try:
-                # print("iteration: ", iter_num+1)
-                sampler = Generator(self.hamiltonian, self)
-                sampler.generate_samples(num_samples, therm_factor, sweep_factor)
-                param_step, E_locs = self.get_SR_gradient(sampler, iter_num, num_samples)
+                self.sampler = Sampler(self.hamiltonian, self)
+                self.sampler.generate_samples(num_samples, therm_factor, sweep_factor)
+                param_step, E_locs = self.get_SR_gradient(self.sampler, iter_num, num_samples)
                 self.update_params(self.lr*param_step)
                 energy = np.mean(np.real(E_locs)) / self.num_vis
-                # print(energy)
+                if verbose:
+                    print("%d: %f" % (iter_num+1, energy))
                 energies.append(energy)
             except RuntimeWarning:
                 # overflow detected, no point in continuing

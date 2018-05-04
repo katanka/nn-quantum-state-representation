@@ -1,13 +1,14 @@
 import numpy as np
 
-class Generator(object):
+
+class Sampler(object):
     """
     Performs Markov Chain Monte Carlo Sampling to generate a set of
     spin configurations sampled from the wave-function we are trying
     to model.
     """
 
-    def __init__(self, hamiltonian, rbm, init_state = None):
+    def __init__(self, hamiltonian, rbm, init_state=None):
 
         # hamiltonian of system to compute local energies
         self.hami = hamiltonian
@@ -32,12 +33,10 @@ class Generator(object):
         if self.curr_state is None:
             self.curr_state = self.init_random_state()
 
-
     def init_random_state(self):
         spins = np.random.randint(2, size=self.model.vis_bias.shape)
         spins[spins == 0] = -1
         return spins
-
 
     def get_local_energy(self):
         elems, state_idx = self.hami.get_matrix_elems(self.curr_state)
@@ -58,11 +57,11 @@ class Generator(object):
             spins_prime = self.flip_spins(self.curr_state, flip_idx)
             self.model.update_eff_angles(spins, spins_prime)
             self.curr_state = spins_prime
-            self.num_spins = self.num_spins
+            self.num_spins = num_spins
         else:
             self.num_rej += 1
 
-    # returns True if the flipped state is accepted and False otherwise
+    # returns whether the flipped state is accepted
     def flip_accepted(self, spins, flip_idx):
         flipped_spins = self.flip_spins(spins, flip_idx)
         transition_prob = np.square(np.absolute(self.model.amp_ratio(spins, flipped_spins)))
@@ -74,24 +73,24 @@ class Generator(object):
             if i == -1:
                 return spins
             else:
-                flipped_spins[i][0] = spins[i][0]*-1
+                flipped_spins[i][0] = spins[i][0] * -1
         return flipped_spins
 
     def generate_samples(self, iterations, therm_factor=0.01, sweep_factor=1):
         self.model.init_effective_angles(self.curr_state)
 
         # thermalization
-        for k in range(int(iterations * therm_factor)*int(sweep_factor*self.num_spins)):
+        for k in range(int(iterations * therm_factor) * int(sweep_factor * self.num_spins)):
             # spins, hidden = self.gibbs_sample(spins, hidden)
             self.step()
 
         # Monte Carlo Sampling
         for i in range(int(iterations)):
-            for k in range(int(sweep_factor*self.num_spins)):
+            for k in range(int(sweep_factor * self.num_spins)):
                 self.step()
             self.spin_set.append(np.array(self.curr_state).reshape((1, self.model.num_vis)))
             self.local_energies.append(self.get_local_energy())
 
-    def compute_corr(self, site1, site2):
-        corrs = [spins[0][site1]*spins[0][site2] for spins in self.spin_set]
+    def compute_correlations(self, site1, site2):
+        corrs = [spins[0][site1] * spins[0][site2] for spins in self.spin_set]
         return np.mean(corrs)
