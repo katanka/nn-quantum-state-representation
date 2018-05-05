@@ -83,3 +83,20 @@ def plot_correlations(correlations, save_name=None):
     if save_name is not None:
         plt.savefig(save_name)
     plt.show()
+
+def plot_correlations_legend(save_name=None):
+
+    values = np.array([np.linspace(-1, 1, 100)])
+    plt.figure(figsize=(4, 1))
+
+    plt.imshow(values, cmap='RdBu', vmin=-1, vmax=1, interpolation='bilinear', extent=[-1, 1, 0, 0.05])
+
+    cur_axes = plt.gca()
+    # cur_axes.axes.get_xaxis().set_ticks([0, 20])
+    # cur_axes.axes.get_xaxis().set_ticklabels([])
+    cur_axes.axes.get_yaxis().set_ticks([])
+    cur_axes.axes.get_yaxis().set_ticklabels([])
+
+    if save_name is not None:
+        plt.savefig(save_name)
+    plt.show()
